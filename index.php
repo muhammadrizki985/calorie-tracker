@@ -32,7 +32,7 @@ function getTodayMeals(): array {
     $db = getDb();
     $res = $db->query("
         SELECT id,file_name,food_name,calories,protein,carbs,fat,ingredients,image_blob
-        FROM meals WHERE DATE(timestamp)=DATE('now','localtime') ORDER BY timestamp DESC
+        FROM meals ORDER BY timestamp DESC
     ");
     $rows = [];
     while ($r = $res->fetchArray(SQLITE3_ASSOC)) $rows[] = $r;
@@ -472,7 +472,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
                 <span class="icon">📂</span>
                 <span class="label">Pilih atau seret gambar makanan</span>
                 <span class="sub">JPG, JPEG, PNG — bisa beberapa sekaligus</span>
-                <input type="file" name="images[]" id="file-input" accept="image/*" capture="environment">
+                <input type="file" name="images[]" id="file-input" accept="image/; capture=camera*">
             </label>
             <div id="preview-strip"></div>
             <div class="tip">💡 <strong>Tips:</strong> Sertakan sendok atau garpu di foto untuk estimasi porsi yang lebih akurat.</div>
