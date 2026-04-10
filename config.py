@@ -13,7 +13,6 @@ client = genai.Client()
 app = FastAPI(title="Food Nutrition Analyzer API")
 
 GEMINI_MODEL = "gemini-3.1-flash-lite-preview"
-GEMINI_TEMPERATURE = 0.1
 GEMINI_MIME_TYPE = "application/json"
 
 API_HOST = "127.0.0.1"

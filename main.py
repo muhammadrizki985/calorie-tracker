@@ -3,7 +3,7 @@ import time
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from pydantic import BaseModel
 
-from config import app, client, GEMINI_MODEL, GEMINI_TEMPERATURE, GEMINI_MIME_TYPE, API_HOST, API_PORT, logger
+from config import app, client, GEMINI_MODEL, GEMINI_MIME_TYPE, API_HOST, API_PORT, logger
 from prompts import ANALYZE_IMAGE_PROMPT, RECALCULATE_PROMPT_TEMPLATE
 from google.genai import types
 
@@ -39,7 +39,6 @@ async def analyze_food(image: UploadFile = File(...)):
                     ],
                     config=types.GenerateContentConfig(
                         response_mime_type=GEMINI_MIME_TYPE,
-                        temperature=GEMINI_TEMPERATURE,
                     )
                 )
                 logger.info(f"API response received: {response.text[:200]}...")
@@ -90,7 +89,6 @@ async def recalculate_food(request: RecalculateRequest):
                     contents=prompt_text,
                     config=types.GenerateContentConfig(
                         response_mime_type=GEMINI_MIME_TYPE,
-                        temperature=GEMINI_TEMPERATURE,
                     )
                 )
                 logger.info(f"Raw API response: {response.text}")
