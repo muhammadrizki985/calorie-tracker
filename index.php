@@ -219,7 +219,7 @@ input, textarea {
     transition: opacity .15s, transform .1s;
 }
 .btn:active { transform: scale(.97); }
-.btn-primary { background: var(--terracotta); color: var(--white); }
+.btn-primary { background: var(--terracotta); color: var(--white); width: 100%; }
 .btn-primary:hover { opacity: .88; }
 .btn-secondary { background: var(--parchment); color: var(--olive); border: 1px solid var(--border); }
 .btn-secondary:hover { background: var(--border); }
@@ -374,9 +374,10 @@ input, textarea {
 .ingredients-line { font-size: .78rem; color: var(--muted); margin-bottom: .8rem; }
 .ingredients-line strong { color: var(--olive); }
 
-.edit-row { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin-bottom: .7rem; }
+.edit-row { display: block; margin-bottom: .7rem; }
+.edit-label { font-size: .84rem; color: var(--muted); margin-bottom: .3rem; display: block; font-weight: 700; }
 .edit-row input {
-    flex: 1; min-width: 120px;
+    width: 100%; box-sizing: border-box;
     padding: .45rem .7rem;
     border: 1.5px solid var(--border);
     border-radius: var(--radius-sm);
@@ -423,7 +424,7 @@ input, textarea {
     animation: spin .8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg) } }
-#spinner-overlay p { color: var(--cream); font-weight: 600; font-size: .95rem; }
+#spinner-overlay p { color: var(--cream); font-weight: 600; font-size: .95rem; text-align: center; padding: 0 1.5rem; }
 
 /* ── empty state ── */
 .empty { text-align: center; padding: 2.5rem 1rem; color: var(--muted); }
@@ -472,7 +473,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
             <label class="upload-zone" id="drop-zone">
                 <span class="icon">📂</span>
                 <span class="label">Pilih atau seret gambar makanan</span>
-                <span class="sub">JPG, JPEG, PNG — bisa beberapa sekaligus</span>
+                <span class="sub">JPG, JPEG, PNG — satu gambar per-analisis</span>
                 <input type="file" name="images[]" id="file-input" accept="image/; capture=camera*">
             </label>
             <div id="preview-strip"></div>
@@ -493,7 +494,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
                 <label for="goal-input" style="font-size:.88rem;color:var(--muted)">Target Kalori:</label>
                 <input type="number" id="goal-input" class="input-field"
                        min="500" max="10000" step="50" value="<?= $dailyGoal ?>">
-                <button type="submit" class="btn btn-secondary btn-sm">Simpan</button>
+                <button type="submit" class="btn btn-secondary btn-sm" style="width:100%">Simpan</button>
             </form>
 
             <div class="prog-wrap" style="margin-top:1.2rem">
@@ -588,6 +589,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
                                 <?php endif; ?>
 
                                 <div class="edit-row">
+                                    <div class="edit-label">Koreksi nama makanan:</div>
                                     <input type="text" id="name-<?= $meal['id'] ?>"
                                            value="<?= htmlspecialchars($meal['food_name']) ?>"
                                            placeholder="Koreksi nama makanan...">
@@ -758,7 +760,14 @@ function toggleMeal(id) {
 async function recalcMeal(id) {
     const name = document.getElementById('name-' + id).value.trim();
     if (!name) return;
-    showSpinner('Menghitung ulang ' + name + '...');
+
+    const startTime = Date.now();
+    showSpinner('Menghitung ulang ' + name + '... (0s)');
+    const updateTimer = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        setSpinnerText('Menghitung ulang ' + name + `... (${elapsed}s)`);
+    }, 1000);
+
     const fd = new FormData();
     fd.append('action', 'recalculate');
     fd.append('meal_id', id);
@@ -767,8 +776,8 @@ async function recalcMeal(id) {
         const res = await fetch('actions.php', { method: 'POST', body: fd });
         const data = await res.json();
         if (data.ok) { location.reload(); }
-        else { hideSpinner(); showToast('Gagal: ' + (data.error || 'Unknown error')); }
-    } catch (err) { hideSpinner(); showToast('Terjadi kesalahan jaringan.'); }
+        else { clearInterval(updateTimer); hideSpinner(); showToast('Gagal: ' + (data.error || 'Unknown error')); }
+    } catch (err) { clearInterval(updateTimer); hideSpinner(); showToast('Terjadi kesalahan jaringan.'); }
 }
 
 // ── delete ────────────────────────────────────────────────────
