@@ -5,5 +5,5 @@ data/
 backups/
 .claude/
 .qwen/
-
+QWEN.md
 .streamlit/
