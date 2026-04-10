@@ -151,7 +151,6 @@ All requests are `POST` to `actions.php` with an `action` field.
 ├── main.py            # FastAPI backend — /analyze, /recalculate
 ├── config.py          # App config: Gemini client, model, host/port, logging
 ├── prompts.py         # Gemini prompt templates (Indonesian) for image & text analysis
-├── db.py              # Python SQLite helper module (legacy, unused by PHP frontend)
 ├── requirements.txt   # Python dependencies
 ├── index.php          # PHP frontend — single-page UI with upload, goals, meal cards
 ├── actions.php        # PHP AJAX handler — image compression, API calls, DB operations
@@ -188,7 +187,6 @@ Gemini returns structured JSON in **Indonesian**:
 - **Retry logic**: Both the Python and PHP layers retry Gemini API calls up to 3 times with a 1-second delay for 503/unavailable errors.
 - **Embedded images**: Meal photos are stored as BLOBs in SQLite for a self-contained, zero-infrastructure setup.
 - **Indonesian language**: All prompts, UI text, and response field names are in Bahasa Indonesia, targeting Indonesian users and using Indonesian nutritional references (e.g., FatSecret Indonesia).
-- **The `db.py` module** is a leftover from an earlier Streamlit-based frontend that was removed. The active frontend is entirely PHP-based.
 
 ## Git-Ignored Files
 
@@ -199,4 +197,3 @@ The following are excluded from version control (see `.gitignore`):
 - `.venv/` — Python virtual environment
 - `__pycache__/` — Python bytecode
 - `backups/` — Database backups
-- `.streamlit/` — Streamlit config
