@@ -299,6 +299,7 @@ input, textarea {
     margin-bottom: 1rem;
     box-shadow: 0 2px 8px var(--shadow);
     transition: box-shadow .2s;
+    scroll-margin-top: 100px;  /* offset for sticky header when auto-scrolling */
 }
 .meal-card:hover { box-shadow: 0 4px 16px var(--shadow); }
 
@@ -625,7 +626,41 @@ hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
 <?php endif; ?>
 
 <script>
-    
+
+// ── Auto-scroll to newly added meal on page load ─────────────
+(function scrollToNewMeal() {
+    const mealId = sessionStorage.getItem('scrollToMeal');
+    if (!mealId) return;
+
+    sessionStorage.removeItem('scrollToMeal');
+
+    // Wait for DOM to be ready
+    requestAnimationFrame(() => {
+        const card = document.getElementById('meal-' + mealId);
+        if (!card) return;
+
+        // Ensure the meal body is expanded
+        const body = document.getElementById('body-' + mealId);
+        const hdr  = document.getElementById('hdr-' + mealId);
+        if (body && !body.classList.contains('open')) {
+            body.classList.add('open');
+            hdr?.classList.add('open');
+        }
+
+        // Scroll to the card with smooth behavior
+        setTimeout(() => {
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+            // Add a brief highlight effect
+            card.style.transition = 'box-shadow 0.6s ease';
+            card.style.boxShadow  = '0 0 0 3px var(--terracotta), 0 4px 16px var(--shadow)';
+            setTimeout(() => {
+                card.style.boxShadow = '';
+            }, 1800);
+        }, 400);
+    });
+})();
+
 // Klik header untuk kembali ke atas
 document.querySelector('.site-header').addEventListener('click', () => {
     window.scrollTo({
@@ -664,17 +699,36 @@ document.getElementById('upload-form').addEventListener('submit', async e => {
     showSpinner('Menganalisis makanan Anda...');
     const files = Array.from(fileInput.files);
     let done = 0;
+    const newMealIds = [];
+    const startTime = Date.now();
+
+    // Update spinner text with elapsed time
+    const updateTimer = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        setSpinnerText(`Menganalisis makanan... (${elapsed}s)`);
+    }, 1000);
 
     for (const file of files) {
-        setSpinnerText(`Menganalisis ${++done} dari ${files.length} makanan...`);
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        setSpinnerText(`Menganalisis makanan... (${elapsed}s)`);
         const fd = new FormData();
         fd.append('action', 'analyze');
         fd.append('image', file, file.name);
         try {
             const res = await fetch('actions.php', { method: 'POST', body: fd });
             const data = await res.json();
+            if (data.ok && data.meal_id) {
+                newMealIds.push(data.meal_id);
+            }
             if (!data.ok) console.warn('Error:', data.error);
         } catch (err) { console.error(err); }
+    }
+
+    clearInterval(updateTimer);
+
+    // Store new meal IDs so we can scroll to them after reload
+    if (newMealIds.length > 0) {
+        sessionStorage.setItem('scrollToMeal', newMealIds[0]);
     }
 
     hideSpinner();

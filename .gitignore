@@ -1,7 +1,9 @@
 __pycache__/
 .venv/
-data/food_tracker.db
+data/
 .env
 backups/
 .claude/
+.qwen/
+
 .streamlit/

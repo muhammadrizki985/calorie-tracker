@@ -106,6 +106,7 @@ function callAnalyzeApi(string $imageBytes, string $fileName): array {
     curl_close($ch);
 
     if ($err)          throw new RuntimeException("cURL error: {$err}");
+    if ($status === 503) throw new RuntimeException("Gemini API sedang sibuk. Silakan coba lagi beberapa saat.");
     if ($status !== 200) throw new RuntimeException("API returned HTTP {$status}: {$resp}");
 
     $data = json_decode($resp, true);
@@ -133,6 +134,7 @@ function callRecalcApi(string $foodName): array {
     curl_close($ch);
 
     if ($err)           throw new RuntimeException("cURL error: {$err}");
+    if ($status === 503) throw new RuntimeException("Gemini API sedang sibuk. Silakan coba lagi beberapa saat.");
     if ($status !== 200) throw new RuntimeException("API returned HTTP {$status}: {$resp}");
 
     $data = json_decode($resp, true);
@@ -184,8 +186,9 @@ switch ($action) {
         $stmt->bindValue(':ing',  json_encode($data['bahan_makanan'] ?? []));
         $stmt->bindValue(':img',  $compressed,                      SQLITE3_BLOB);
         $stmt->execute();
+        $mealId = $db->lastInsertRowID();
 
-        ok(['food' => $data['nama_makanan'] ?? '']);
+        ok(['food' => $data['nama_makanan'] ?? '', 'meal_id' => $mealId]);
     }
 
     // ── recalculate by food name ──────────────────────────────────────────────
