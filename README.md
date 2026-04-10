@@ -137,6 +137,7 @@ All requests are `POST` to `actions.php` with an `action` field.
 |---|---|---|
 | `GEMINI_API_KEY` | *(required)* | Google Gemini API key (set in `.env`) |
 | `GEMINI_MODEL` | `gemini-3.1-flash-lite-preview` | Gemini model used for analysis |
+| `GEMINI_TEMPERATURE` | `0.1` | Low temperature for consistent, deterministic output |
 | `GEMINI_MIME_TYPE` | `application/json` | Response format requested from Gemini |
 | `API_HOST` | `127.0.0.1` | FastAPI bind address |
 | `API_PORT` | `8282` | FastAPI port |
@@ -182,7 +183,6 @@ Gemini returns structured JSON in **Indonesian**:
 
 ## Key Design Decisions
 
-- **Temperature default**: Uses Gemini 3's default temperature of 1.0 (recommended by Google for optimal reasoning performance).
 - **Image compression**: PHP compresses images before sending to Python to reduce API payload size and cost.
 - **Retry logic**: Both the Python and PHP layers retry Gemini API calls up to 3 times with a 1-second delay for 503/unavailable errors.
 - **Embedded images**: Meal photos are stored as BLOBs in SQLite for a self-contained, zero-infrastructure setup.
