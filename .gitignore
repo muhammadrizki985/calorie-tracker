@@ -6,3 +6,9 @@ backups/
 .claude/
 .qwen/
 QWEN.md
+
+# Misc
+*.pyc
+*.swp
+.DS_Store
+Thumbs.db
