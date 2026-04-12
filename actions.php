@@ -251,6 +251,16 @@ switch ($action) {
         ok(['goal' => $goal]);
     }
 
+    // ── get stats for cross-device sync ───────────────────────────────────────
+    case 'get_stats': {
+        $db = getDb();
+        $row = $db->querySingle("SELECT COUNT(*) FROM meals");
+        $count = (int)($row ?? 0);
+        $row2 = $db->querySingle("SELECT COALESCE(SUM(calories),0) FROM meals");
+        $totalCal = (int)($row2 ?? 0);
+        ok(['count' => $count, 'total_cal' => $totalCal]);
+    }
+
     // ── clear all meals ───────────────────────────────────────────────────────
     case 'clear': {
         $db = getDb();

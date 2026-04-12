@@ -50,6 +50,8 @@ function getAllMeals(): array {
     return $rows;
 }
 
+session_start();
+
 $dailyGoal  = getDailyGoal();
 $todayMeals = getTodayMeals();
 $allMeals   = getAllMeals();
@@ -63,7 +65,6 @@ $pct          = min(100, round($todayCals / max($dailyGoal, 1) * 100));
 
 // Flash messages
 $flash = $_SESSION['flash'] ?? null;
-session_start();
 if (isset($_SESSION['flash'])) { $flash = $_SESSION['flash']; unset($_SESSION['flash']); }
 ?>
 <!DOCTYPE html>
@@ -813,6 +814,62 @@ function showToast(msg) {
     document.body.appendChild(t);
     setTimeout(() => t.remove(), 3200);
 }
+
+// ── cross-device auto-sync via polling ───────────────────────
+(function autoSync() {
+    // Read initial stats from PHP-rendered values
+    const mealCards = document.querySelectorAll('.meal-card');
+    let lastMealCount = mealCards.length;
+    let lastTotalCal  = <?= $todayCals ?>;
+
+    const POLL_INTERVAL = 5000; // 5 seconds
+    let syncTimer = null;
+
+    function startPolling() {
+        if (syncTimer) return;
+        syncTimer = setInterval(checkForUpdates, POLL_INTERVAL);
+    }
+
+    function stopPolling() {
+        if (syncTimer) { clearInterval(syncTimer); syncTimer = null; }
+    }
+
+    async function checkForUpdates() {
+        try {
+            const fd = new FormData();
+            fd.append('action', 'get_stats');
+            const res  = await fetch('actions.php', { method: 'POST', body: fd });
+            const json = await res.json();
+            if (!json.ok) return;
+
+            const serverCount = json.count;
+            const serverCal   = json.total_cal;
+
+            if (serverCount !== lastMealCount || serverCal !== lastTotalCal) {
+                console.log('[sync] change detected', lastMealCount, '→', serverCount);
+                stopPolling();
+                showToast('🔄 Data diperbarui dari perangkat lain...');
+                setTimeout(() => location.reload(), 600);
+            }
+        } catch (e) { /* ignore */ }
+    }
+
+    // Start polling immediately
+    startPolling();
+
+    // Also check when tab regains focus
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            checkForUpdates();
+            startPolling();
+        } else {
+            stopPolling();
+        }
+    });
+
+    // Expose for manual debugging: window._syncCheck()
+    window._syncCheck = checkForUpdates;
+})();
 </script>
 </body>
 </html>
