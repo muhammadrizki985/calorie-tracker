@@ -2,6 +2,12 @@
 
 AI-powered food calorie and macronutrient tracker using **Google Gemini** (`gemini-3.1-flash-lite-preview`). Upload a photo of your meal and get instant estimates for calories, protein, carbs, fat, and ingredient breakdowns — all in **Bahasa Indonesia**.
 
+## Screenshots
+
+| Desktop | Mobile |
+|:-------:|:------:|
+| <img src="images/desktop.png" width="600"> | <img src="images/mobile.jpg" width="300"> |
+
 ## Features
 
 - 📸 **Image-based analysis** — Upload a food photo, get calorie & macro estimates via Gemini AI
@@ -14,21 +20,23 @@ AI-powered food calorie and macronutrient tracker using **Google Gemini** (`gemi
 ## Architecture
 
 ```
-Browser (PHP frontend)
+Browser
   │
-  │  AJAX POST (multipart/form-data)
+  │  AJAX POST
   ▼
-actions.php  ── compresses image via GD ──►  FastAPI backend (main.py :8282)
-                                                        │
-                                                        ▼
-                                                 Google Gemini API
-                                                        │
-                                                        ▼
-                                                 JSON nutrition data
-                                                        │
-                                                        ▼
-                                              Store in SQLite → response
+Docker container (host network)
+┌──────────────────────────────────────────────┐
+│  actions.php  ──►  FastAPI (main.py :8282)   │
+│       │                    │                 │
+│       ▼                    ▼                 │
+│   SQLite DB          Google Gemini API       │
+│   (data/)                                    │
+└──────────────────────────────────────────────┘
 ```
+
+- **Frontend** — PHP built-in server on port **8501**
+- **Backend** — FastAPI + Uvicorn on port **8282**
+- Both run inside a single Alpine-based container with `network_mode: host`
 
 1. User uploads a food photo in the PHP frontend (`index.php`).
 2. `actions.php` compresses the image (max 1024px, JPEG quality 70) and POSTs it to FastAPI `/analyze`.
@@ -73,6 +81,29 @@ You can check with: `php -m | grep -E 'sqlite3|gd|curl'`
 
 ## Running the App
 
+### Option A: Docker Compose (recommended)
+
+```bash
+# Make sure GEMINI_API_KEY is set in .env
+echo "GEMINI_API_KEY=your_key_here" >> .env
+
+docker compose up -d
+```
+
+- **Frontend** → `http://<your-ip>:8501`
+- **Backend API** → `http://<your-ip>:8282`
+- SQLite data persists via the `data/` volume mount.
+
+```bash
+# View logs
+docker compose logs -f
+
+# Stop
+docker compose down
+```
+
+### Option B: Manual (development)
+
 ### Start the FastAPI backend
 
 ```bash
@@ -83,8 +114,8 @@ python main.py
 ### Start the PHP frontend (separate terminal)
 
 ```bash
-php -S localhost:8000
-# Open http://localhost:8000 in your browser
+php -S localhost:8501
+# Open http://localhost:8501 in your browser
 ```
 
 ## API Endpoints (FastAPI)
@@ -154,8 +185,12 @@ All requests are `POST` to `actions.php` with an `action` field.
 ├── requirements.txt   # Python dependencies
 ├── index.php          # PHP frontend — single-page UI with upload, goals, meal cards
 ├── actions.php        # PHP AJAX handler — image compression, API calls, DB operations
+├── Dockerfile         # Alpine-based image with PHP 8.3 + Python 3
+├── docker-compose.yml # Single-container compose setup (host network)
+├── entrypoint.sh      # Starts both PHP and FastAPI servers
+├── .dockerignore      # Excludes .venv, __pycache__, .git from image
 ├── data/
-│   └── food_tracker.db   # SQLite database (git-ignored)
+│   └── food_tracker.db   # SQLite database (git-ignored, bind-mounted)
 ├── backups/           # Database backups (git-ignored)
 └── .env               # API key (git-ignored)
 ```
