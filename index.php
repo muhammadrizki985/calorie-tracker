@@ -375,6 +375,33 @@ input, textarea {
 .ingredients-line { font-size: .78rem; color: var(--muted); margin-bottom: .8rem; }
 .ingredients-line strong { color: var(--olive); }
 
+.ingredient-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: .8rem;
+    font-size: .78rem;
+}
+.ingredient-table th {
+    text-align: left;
+    color: var(--olive);
+    font-weight: 700;
+    padding: .25rem .4rem;
+    border-bottom: 1px solid var(--border);
+}
+.ingredient-table td {
+    color: var(--muted);
+    padding: .25rem .4rem;
+}
+.ingredient-table td:last-child {
+    text-align: right;
+}
+.ingredient-table th:last-child {
+    text-align: right;
+}
+.ingredient-table tr + tr {
+    border-top: 1px dotted var(--border);
+}
+
 .edit-row { display: block; margin-bottom: .7rem; }
 .edit-label { font-size: .84rem; color: var(--muted); margin-bottom: .3rem; display: block; font-weight: 700; }
 .edit-row input {
@@ -589,9 +616,39 @@ hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
                                 </div>
 
                                 <?php if ($ing): ?>
-                                <div class="ingredients-line">
-                                    <strong>Bahan-bahan:</strong> <?= htmlspecialchars(implode(', ', $ing)) ?>
-                                </div>
+                                <table class="ingredient-table">
+                                    <tr><th>Bahan</th><th>Berat (g)</th><th>Kalori (kkal)</th></tr>
+                                    <?php
+                                    // Support both old string format and new object format
+                                    $items = [];
+                                    foreach ($ing as $item) {
+                                        if (is_array($item) && isset($item['nama'])) {
+                                            $items[] = [
+                                                'nama'   => htmlspecialchars($item['nama']),
+                                                'berat'  => $item['berat_g'],
+                                                'kalori' => $item['kalori'],
+                                                'sort'   => (int)($item['kalori'] ?? 0),
+                                            ];
+                                        } else {
+                                            // Fallback for legacy entries
+                                            $items[] = [
+                                                'nama'   => htmlspecialchars((string)$item),
+                                                'berat'  => '—',
+                                                'kalori' => '—',
+                                                'sort'   => 0,
+                                            ];
+                                        }
+                                    }
+                                    // Sort by calories descending
+                                    usort($items, fn($a, $b) => $b['sort'] <=> $a['sort']);
+                                    foreach ($items as $row): ?>
+                                    <tr>
+                                        <td><?= $row['nama'] ?></td>
+                                        <td><?= $row['berat'] ?></td>
+                                        <td><?= $row['kalori'] ?></td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                </table>
                                 <?php endif; ?>
 
                                 <div class="edit-row">
@@ -808,9 +865,9 @@ async function clearAll() {
 
 // ── spinner ──────────────────────────────────────────────────
 const overlay = document.getElementById('spinner-overlay');
-function showSpinner(msg) { document.getElementById('spinner-text').textContent = msg || ''; overlay.classList.add('show'); }
+function showSpinner(msg) { document.getElementById('spinner-text').textContent = msg || ''; overlay.classList.add('show'); document.body.style.overflow = 'hidden'; }
 function setSpinnerText(msg) { document.getElementById('spinner-text').textContent = msg; }
-function hideSpinner() { overlay.classList.remove('show'); }
+function hideSpinner() { overlay.classList.remove('show'); document.body.style.overflow = ''; }
 
 // ── toast ────────────────────────────────────────────────────
 function showToast(msg) {
