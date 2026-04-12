@@ -390,8 +390,13 @@ input, textarea {
 
 .action-row { display: flex; gap: .5rem; flex-wrap: wrap; }
 
-.action-row .btn { 
-    flex: 1; 
+.action-row .btn-re {
+    flex: 1;
+}
+
+.action-row .btn-del {
+    flex: 0;
+    min-width: 42px;
 }
 
 /* ── flash / toast ── */
@@ -596,13 +601,13 @@ hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
                                            placeholder="Koreksi nama makanan...">
                                 </div>
                                 <div class="action-row">
-                                    <button class="btn btn-secondary btn-sm"
+                                    <button class="btn btn-danger btn-sm btn-del"
+                                            onclick="deleteMeal(<?= $meal['id'] ?>)">
+                                        ✕
+                                    </button>
+                                    <button class="btn btn-secondary btn-sm btn-re"
                                             onclick="recalcMeal(<?= $meal['id'] ?>)">
                                         Hitung Ulang
-                                    </button>
-                                    <button class="btn btn-danger btn-sm"
-                                            onclick="deleteMeal(<?= $meal['id'] ?>)">
-                                        Hapus
                                     </button>
                                 </div>
                             </div>
