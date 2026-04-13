@@ -340,8 +340,8 @@ input, textarea {
 .meal-header .chevron { font-size: .75rem; color: var(--muted); transition: transform .2s; }
 .meal-header.open .chevron { transform: rotate(180deg); }
 
-.meal-body { display: none; padding: 1rem 1.1rem 1.2rem; }
-.meal-body.open { display: block; }
+.meal-body { max-height: 0; overflow: hidden; padding: 0 1.1rem; opacity: 0; transition: max-height 0.15s ease, padding 0.15s ease, opacity 0.1s ease; }
+.meal-body.open { max-height: 2000px; padding: 1rem 1.1rem 1.2rem; opacity: 1; transition-delay: 0.01s; }
 
 .meal-inner { display: flex; gap: 1rem; align-items: flex-start; }
 @media(max-width:480px){ .meal-inner { flex-direction: column; } }
@@ -401,6 +401,17 @@ input, textarea {
 .ingredient-table tr + tr {
     border-top: 1px dotted var(--border);
 }
+.ing-del {
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-size: 14px;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+    transition: color .15s;
+}
+.ing-del:hover { color: var(--red); }
 
 .edit-row { display: block; margin-bottom: .7rem; }
 .edit-label { font-size: .84rem; color: var(--muted); margin-bottom: .3rem; display: block; font-weight: 700; }
@@ -617,13 +628,14 @@ hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
 
                                 <?php if ($ing): ?>
                                 <table class="ingredient-table">
-                                    <tr><th>Bahan</th><th>Berat (g)</th><th>Kalori (kkal)</th></tr>
+                                    <tr><th>Bahan</th><th>Berat (g)</th><th>Kalori (kkal)</th><th></th></tr>
                                     <?php
                                     // Support both old string format and new object format
                                     $items = [];
-                                    foreach ($ing as $item) {
+                                    foreach ($ing as $origIdx => $item) {
                                         if (is_array($item) && isset($item['nama'])) {
                                             $items[] = [
+                                                'origIdx' => $origIdx,
                                                 'nama'   => htmlspecialchars($item['nama']),
                                                 'berat'  => $item['berat_g'],
                                                 'kalori' => $item['kalori'],
@@ -632,6 +644,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
                                         } else {
                                             // Fallback for legacy entries
                                             $items[] = [
+                                                'origIdx' => $origIdx,
                                                 'nama'   => htmlspecialchars((string)$item),
                                                 'berat'  => '—',
                                                 'kalori' => '—',
@@ -646,6 +659,9 @@ hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
                                         <td><?= $row['nama'] ?></td>
                                         <td><?= $row['berat'] ?></td>
                                         <td><?= $row['kalori'] ?></td>
+                                        <td style="text-align:center;padding-right:4px">
+                                            <button class="ing-del" onclick="removeIngredient(<?= $meal['id'] ?>, <?= $row['origIdx'] ?>)">✕</button>
+                                        </td>
                                     </tr>
                                     <?php endforeach; ?>
                                 </table>
@@ -845,6 +861,19 @@ function toggleMeal(id) {
 }
 
 // ── recalculate ───────────────────────────────────────────────
+async function removeIngredient(mealId, ingIndex) {
+    const fd = new FormData();
+    fd.append('action', 'remove_ingredient');
+    fd.append('meal_id', mealId);
+    fd.append('ing_index', ingIndex);
+    try {
+        const res = await fetch('actions.php', { method: 'POST', body: fd });
+        const data = await res.json();
+        if (data.ok) { location.reload(); }
+        else showToast('Gagal: ' + (data.error || 'Unknown error'));
+    } catch (err) { showToast('Terjadi kesalahan jaringan.'); }
+}
+
 async function recalcMeal(id) {
     const name = document.getElementById('name-' + id).value.trim();
     if (!name) return;

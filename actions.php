@@ -287,6 +287,71 @@ switch ($action) {
         ok(['count' => $count, 'total_cal' => $totalCal]);
     }
 
+    // ── remove one ingredient ─────────────────────────────────────────────────
+    case 'remove_ingredient': {
+        $mealId = (int)($_POST['meal_id'] ?? 0);
+        $ingIdx = (int)($_POST['ing_index'] ?? -1);
+        if (!$mealId || $ingIdx < 0) fail('Missing meal_id or ing_index.');
+
+        $db = getDb();
+        $stmt = $db->prepare("SELECT ingredients, calories, protein, carbs, fat FROM meals WHERE id=:id");
+        $stmt->bindValue(':id', $mealId);
+        $result = $stmt->execute();
+        $row = $result->fetchArray(SQLITE3_ASSOC);
+        if (!$row) fail('Meal not found.');
+
+        $oldCal  = (int)$row['calories'];
+        $oldProt = (int)$row['protein'];
+        $oldCarb = (int)$row['carbs'];
+        $oldFat  = (int)$row['fat'];
+
+        $ingredients = json_decode($row['ingredients'], true) ?: [];
+        if ($ingIdx >= count($ingredients)) fail('Ingredient index out of range.');
+
+        // Subtract the removed ingredient's calories from totals
+        $removed = $ingredients[$ingIdx];
+        $removedCal = 0;
+        if (is_array($removed) && isset($removed['kalori'])) {
+            $removedCal = (int)$removed['kalori'];
+        }
+        array_splice($ingredients, $ingIdx, 1);
+
+        // Recalculate totals from remaining structured ingredients
+        $newCal = 0;
+        foreach ($ingredients as $item) {
+            if (is_array($item) && isset($item['kalori'])) {
+                $newCal += (int)$item['kalori'];
+            }
+        }
+        // If new total is zero (legacy data), fall back to subtraction
+        if ($newCal === 0 && $removedCal > 0) {
+            $newCal = max(0, $oldCal - $removedCal);
+        }
+
+        // Scale macros proportionally
+        if ($oldCal > 0) {
+            $ratio = $newCal / $oldCal;
+            $newProt = max(0, (int)round($oldProt * $ratio));
+            $newCarb = max(0, (int)round($oldCarb * $ratio));
+            $newFat  = max(0, (int)round($oldFat  * $ratio));
+        } else {
+            $newProt = $oldProt;
+            $newCarb = $oldCarb;
+            $newFat  = $oldFat;
+        }
+
+        $stmt = $db->prepare("UPDATE meals SET ingredients=:ing, calories=:cal, protein=:pro, carbs=:carb, fat=:fat WHERE id=:id");
+        $stmt->bindValue(':ing', json_encode($ingredients));
+        $stmt->bindValue(':cal', $newCal);
+        $stmt->bindValue(':pro', $newProt);
+        $stmt->bindValue(':carb', $newCarb);
+        $stmt->bindValue(':fat', $newFat);
+        $stmt->bindValue(':id', $mealId);
+        $stmt->execute();
+
+        ok(['new_calories' => $newCal, 'new_protein' => $newProt, 'new_carbs' => $newCarb, 'new_fat' => $newFat]);
+    }
+
     // ── clear all meals ───────────────────────────────────────────────────────
     case 'clear': {
         $db = getDb();
