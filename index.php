@@ -761,9 +761,11 @@ document.getElementById('upload-form').addEventListener('submit', async e => {
     e.preventDefault();
     if (!fileInput.files.length) return;
 
+    // Pause auto-sync polling so PHP isn't blocked by a concurrent poll
+    if (window._syncPause) window._syncPause.stop();
+
     showSpinner('Menganalisis makanan Anda...');
     const files = Array.from(fileInput.files);
-    let done = 0;
     const newMealIds = [];
     const startTime = Date.now();
 
@@ -774,22 +776,45 @@ document.getElementById('upload-form').addEventListener('submit', async e => {
     }, 1000);
 
     for (const file of files) {
-        const elapsed = Math.floor((Date.now() - startTime) / 1000);
-        setSpinnerText(`Menganalisis makanan... (${elapsed}s)`);
         const fd = new FormData();
         fd.append('action', 'analyze');
         fd.append('image', file, file.name);
         try {
             const res = await fetch('actions.php', { method: 'POST', body: fd });
-            const data = await res.json();
+            const text = await res.text();
+            let data;
+            try { data = JSON.parse(text); } catch {
+                console.error('Non-JSON response:', text.slice(0, 200));
+                showToast('❌ Gagal: server mengembalikan response yang tidak valid.');
+                clearInterval(updateTimer);
+                hideSpinner();
+                if (window._syncPause) window._syncPause.start();
+                return;
+            }
             if (data.ok && data.meal_id) {
                 newMealIds.push(data.meal_id);
+            } else {
+                console.error('Analyze error:', data.error);
+                showToast('❌ Gagal: ' + (data.error || 'Unknown error'));
+                clearInterval(updateTimer);
+                hideSpinner();
+                if (window._syncPause) window._syncPause.start();
+                return;
             }
-            if (!data.ok) console.warn('Error:', data.error);
-        } catch (err) { console.error(err); }
+        } catch (err) {
+            console.error('Fetch error:', err.message);
+            showToast('❌ Gagal: tidak bisa terhubung ke server. Periksa koneksi internet.');
+            clearInterval(updateTimer);
+            hideSpinner();
+            if (window._syncPause) window._syncPause.start();
+            return;
+        }
     }
 
     clearInterval(updateTimer);
+
+    // Resume auto-sync before reload
+    if (window._syncPause) window._syncPause.start();
 
     // Store new meal IDs so we can scroll to them after reload
     if (newMealIds.length > 0) {
@@ -931,6 +956,9 @@ function showToast(msg) {
 
     // Expose for manual debugging: window._syncCheck()
     window._syncCheck = checkForUpdates;
+
+    // Expose for pausing during heavy operations (like upload)
+    window._syncPause = { stop: stopPolling, start: startPolling };
 })();
 </script>
 </body>

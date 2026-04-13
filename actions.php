@@ -150,15 +150,41 @@ switch ($action) {
 
     // ── analyze uploaded image ────────────────────────────────────────────────
     case 'analyze': {
-        if (empty($_FILES['image'])) fail('No image uploaded.');
+        if (empty($_FILES['image'])) {
+            $debug = isset($_FILES['image']) ? json_encode($_FILES['image']) : 'not set';
+            fail('No image uploaded. FILES: ' . $debug . ' POST: ' . json_encode(array_keys($_POST)));
+        }
 
         $file     = $_FILES['image'];
         $tmpPath  = $file['tmp_name'];
         $origName = basename($file['name']);
         $mime     = $file['type'];
 
-        if (!str_starts_with($mime, 'image/')) fail('File is not an image.');
-        if (!is_uploaded_file($tmpPath))         fail('Upload error.');
+        // If tmp_path is empty, the upload may have failed (size limit, disk space, etc.)
+        if ($tmpPath === '' || $tmpPath === null) {
+            $err = isset($file['error']) ? $file['error'] : 'unknown';
+            $errMap = [
+                UPLOAD_ERR_INI_SIZE => 'File exceeds server upload size limit.',
+                UPLOAD_ERR_FORM_SIZE => 'File exceeds form MAX_FILE_SIZE.',
+                UPLOAD_ERR_PARTIAL => 'File was only partially uploaded.',
+                UPLOAD_ERR_NO_FILE => 'No file was uploaded.',
+                UPLOAD_ERR_NO_TMP_DIR => 'Missing a temporary folder.',
+                UPLOAD_ERR_CANT_WRITE => 'Failed to write file to disk.',
+                UPLOAD_ERR_EXTENSION => 'A PHP extension stopped the file upload.',
+            ];
+            $msg = $errMap[$err] ?? "Upload failed with error code $err.";
+            fail($msg);
+        }
+
+        if (!is_uploaded_file($tmpPath)) fail('Upload error: file not a valid upload.');
+
+        // Detect MIME type from file content, not browser (which can be empty/wrong on mobile)
+        if (function_exists('finfo_open')) {
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            $mime  = finfo_file($finfo, $tmpPath);
+            finfo_close($finfo);
+        }
+        if (!str_starts_with($mime, 'image/')) fail('File is not an image (detected type: ' . $mime . ').');
 
         // compress
         $compressed = compressImage($tmpPath, $mime);
