@@ -84,12 +84,17 @@ function compressImage(string $tmpPath, string $mimeType): string|false {
 /**
  * POST multipart/form-data to FastAPI /analyze using cURL.
  */
-function callAnalyzeApi(string $imageBytes, string $fileName): array {
+function callAnalyzeApi(string $imageBytes, string $fileName, string $additionalInfo = ''): array {
     $boundary = '----FormBoundary' . bin2hex(random_bytes(8));
     $body  = "--{$boundary}\r\n";
     $body .= "Content-Disposition: form-data; name=\"image\"; filename=\"{$fileName}\"\r\n";
     $body .= "Content-Type: image/jpeg\r\n\r\n";
     $body .= $imageBytes . "\r\n";
+    if ($additionalInfo !== '') {
+        $body .= "--{$boundary}\r\n";
+        $body .= "Content-Disposition: form-data; name=\"additional_info\"\r\n\r\n";
+        $body .= $additionalInfo . "\r\n";
+    }
     $body .= "--{$boundary}--\r\n";
 
     $ch = curl_init(API_ANALYZE);
@@ -191,8 +196,9 @@ switch ($action) {
         if ($compressed === false) fail('Failed to process image.');
 
         // call AI API
+        $additionalInfo = trim($_POST['additional_info'] ?? '');
         try {
-            $data = callAnalyzeApi($compressed, $origName);
+            $data = callAnalyzeApi($compressed, $origName, $additionalInfo);
         } catch (RuntimeException $e) {
             fail($e->getMessage());
         }

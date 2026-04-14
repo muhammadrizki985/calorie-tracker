@@ -521,6 +521,11 @@ hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
                 <input type="file" name="images[]" id="file-input" accept="image/; capture=camera*">
             </label>
             <div id="preview-strip"></div>
+            <div class="edit-row" style="margin-top:.8rem">
+                <div class="edit-label">Deskripsi tambahan:</div>
+                <input type="text" name="additional_info" id="additional-info"
+                       placeholder="Contoh: porsi besar, tanpa nasi, extra sambal, 2 porsi...">
+            </div>
             <div class="tip">💡 <strong>Tips:</strong> Sertakan sendok atau garpu di foto untuk estimasi porsi yang lebih akurat.</div>
             <div style="margin-top:1rem">
                 <button type="submit" class="btn btn-primary" id="analyze-btn" disabled>
@@ -791,10 +796,13 @@ document.getElementById('upload-form').addEventListener('submit', async e => {
         setSpinnerText(`Menganalisis makanan... (${elapsed}s)`);
     }, 1000);
 
+    const additionalInfo = document.getElementById('additional-info').value.trim();
+
     for (const file of files) {
         const fd = new FormData();
         fd.append('action', 'analyze');
         fd.append('image', file, file.name);
+        if (additionalInfo) fd.append('additional_info', additionalInfo);
         try {
             const res = await fetch('actions.php', { method: 'POST', body: fd });
             const text = await res.text();
