@@ -122,8 +122,12 @@ function callAnalyzeApi(string $imageBytes, string $fileName, string $additional
 /**
  * POST JSON to FastAPI /recalculate.
  */
-function callRecalcApi(string $foodName): array {
-    $payload = json_encode(['food_name' => $foodName]);
+function callRecalcApi(string $foodName, ?array $ingredients = null): array {
+    $body = ['food_name' => $foodName];
+    if ($ingredients) {
+        $body['ingredients'] = $ingredients;
+    }
+    $payload = json_encode($body);
 
     $ch = curl_init(API_RECALCULATE);
     curl_setopt_array($ch, [
@@ -139,7 +143,7 @@ function callRecalcApi(string $foodName): array {
     curl_close($ch);
 
     if ($err)           throw new RuntimeException("cURL error: {$err}");
-    if ($status === 503) throw new RuntimeException("Gemini API sedang sibuk. Silakan coba lagi beberapa saat.");
+    if ($status === 503) throw new RuntimeException("AI API sedang sibuk. Silakan coba lagi beberapa saat.");
     if ($status !== 200) throw new RuntimeException("API returned HTTP {$status}: {$resp}");
 
     $data = json_decode($resp, true);
@@ -230,13 +234,19 @@ switch ($action) {
 
         if (!$mealId || !$foodName) fail('Missing meal_id or food_name.');
 
+        // Fetch original ingredients from DB for context
+        $db   = getDb();
+        $row  = $db->querySingle("SELECT ingredients FROM meals WHERE id = {$mealId}", true);
+        $ingredients = null;
+        if ($row && !empty($row['ingredients'])) {
+            $ingredients = json_decode($row['ingredients'], true);
+        }
+
         try {
-            $data = callRecalcApi($foodName);
+            $data = callRecalcApi($foodName, $ingredients);
         } catch (RuntimeException $e) {
             fail($e->getMessage());
         }
-
-        $db   = getDb();
         $stmt = $db->prepare("
             UPDATE meals
             SET food_name=:food, calories=:cal, protein=:pro,

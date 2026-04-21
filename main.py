@@ -6,7 +6,7 @@ from typing import Optional
 
 from config import app, client, GEMINI_MODEL, GEMINI_TEMPERATURE, GEMINI_MIME_TYPE, API_HOST, API_PORT, logger, AI_PROVIDER
 from config import KILO_API_KEY
-from prompts import ANALYZE_IMAGE_PROMPT, RECALCULATE_PROMPT_TEMPLATE, build_analyze_prompt
+from prompts import ANALYZE_IMAGE_PROMPT, RECALCULATE_PROMPT_TEMPLATE, build_analyze_prompt, build_recalculate_prompt
 from google.genai import types
 from kilo_client import analyze_image as kilo_analyze_image, recalculate_text as kilo_recalculate_text, KiloClientError
 
@@ -15,6 +15,7 @@ RETRY_DELAY = 1.0
 
 class RecalculateRequest(BaseModel):
     food_name: str
+    ingredients: Optional[list] = None
 
 
 def _try_gemini_analyze(image_bytes: bytes, image_content_type: str, prompt_text: str) -> str:
@@ -178,8 +179,9 @@ async def analyze_food(image: UploadFile = File(...), additional_info: Optional[
 async def recalculate_food(request: RecalculateRequest):
     logger.info(f"Recalculate request for: {request.food_name}")
     try:
-        prompt_text = RECALCULATE_PROMPT_TEMPLATE.format(food_name=request.food_name)
+        prompt_text = build_recalculate_prompt(request.food_name, request.ingredients)
         logger.info(f"Using AI provider: {AI_PROVIDER}")
+        logger.info(f"Using prompt with ingredients={'yes' if request.ingredients else 'no'}")
 
         # Use provider routing logic
         response_text = _recalculate_with_provider(AI_PROVIDER, prompt_text)
