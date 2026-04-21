@@ -640,6 +640,12 @@ hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
                     ⚠️ Melebihi target: <strong><?= abs($remaining) ?> kkal</strong>
                 <?php endif; ?>
             </div>
+
+            <div class="clear-day-row" style="margin-top:1rem">
+                <button class="btn btn-danger btn-sm btn-full" onclick="clearAll()">
+                    🗑️ Hapus Semua Catatan Hari Ini
+                </button>
+            </div>
         </div>
     </div>
 
@@ -765,15 +771,6 @@ hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
                 </div>
             <?php endforeach; ?>
         <?php endif; ?>
-    </div>
-
-    <hr>
-
-    <!-- ── DANGER ZONE ──────────────────────────────── -->
-    <div class="danger-zone">
-        <button class="btn btn-danger" onclick="clearAll()">
-            🗑️ Hapus Semua Catatan Makan
-        </button>
     </div>
 
 </div><!-- /wrapper -->
