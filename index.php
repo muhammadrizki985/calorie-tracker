@@ -120,28 +120,42 @@ input, textarea {
 .wrapper { max-width: 720px; margin: 0 auto; padding: 0 1rem 4rem; }
 
 /* ── header ── */
-.site-header {
+.site-header-sticky {
     background: var(--olive);
     color: var(--cream);
-    padding: 1.5rem 1rem 1.4rem;
+    padding: 1rem;
     text-align: center;
     position: sticky; top: 0; z-index: 100;
     box-shadow: 0 2px 12px rgba(0,0,0,.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 56px;
 }
-.site-header:active {
+.site-header-sticky:active {
     background-color: color-mix(in srgb, var(--olive), black 7%);
-    transform: translateY(1px);
 }
-.site-header h1 {
+.site-header-sticky h1 {
     font-family: 'Lora', serif;
     font-size: 1.65rem;
     letter-spacing: .02em;
+    margin: 0;
 }
-.site-header p {
+.site-header-subtitle {
+    background: var(--olive);
+    color: var(--cream);
+    text-align: center;
     font-size: .82rem;
     opacity: .7;
-    margin-top: .25rem;
+    padding: 0;
     font-style: italic;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+}
+.site-header-subtitle span {
+    padding: .6rem 1rem;
 }
 
 /* ── section ── */
@@ -554,10 +568,12 @@ hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
 </head>
 <body>
 
-<header class="site-header">
+<div class="site-header-sticky">
     <h1>🍱 Jejak Kalori</h1>
-    <p>Upload foto, dapatkan estimasi kalori &amp; makro dalam hitungan detik.</p>
-</header>
+</div>
+<div class="site-header-subtitle">
+    <span>Upload foto, dapatkan estimasi kalori dan makro.</span>
+</div>
 
 <!-- spinner overlay -->
 <div id="spinner-overlay">
@@ -816,7 +832,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
 })();
 
 // Klik header untuk kembali ke atas
-document.querySelector('.site-header').addEventListener('click', () => {
+document.querySelector('.site-header-sticky').addEventListener('click', () => {
     window.scrollTo({
         top: 0,
         behavior: 'smooth' // Efek scroll halus
