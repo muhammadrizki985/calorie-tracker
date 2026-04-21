@@ -182,13 +182,16 @@ input, textarea {
     box-shadow: 0 2px 8px var(--shadow);
 }
 
-/* ── upload zone ── */
 .upload-zone {
-    display: block;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .6rem;
     border: 2px dashed var(--terracotta);
     border-radius: var(--radius);
-    padding: 2.2rem 1.5rem;
-    text-align: center;
+    padding: 1rem 1.2rem;
+    min-height: 56px;
+    text-align: left;
     background: var(--terra-pale);
     transition: background .2s, border-color .2s;
     cursor: pointer;
@@ -198,9 +201,10 @@ input, textarea {
 .upload-zone input[type=file] {
     position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
 }
-.upload-zone .icon { font-size: 2.5rem; display: block; margin-bottom: .6rem; }
-.upload-zone .label { font-size: .95rem; color: var(--terracotta); font-weight: 600; display: block; }
-.upload-zone .sub   { font-size: .78rem; color: var(--muted); margin-top: .3rem; display: block; }
+.upload-zone .icon { font-size: 1.6rem; flex-shrink: 0; }
+.upload-zone .text-wrap { display: flex; flex-direction: column; gap: .1rem; }
+.upload-zone .label { font-size: .9rem; color: var(--terracotta); font-weight: 600; line-height: 1.3; }
+.upload-zone .sub   { font-size: .72rem; color: var(--muted); line-height: 1.3; }
 
 /* preview strip */
 #preview-strip {
@@ -587,12 +591,14 @@ hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
     <div class="section">
         <div class="section-title">Tambah Makanan</div>
         <form id="upload-form" enctype="multipart/form-data">
-            <label class="upload-zone" id="drop-zone">
-                <span class="icon">📂</span>
-                <span class="label">Pilih atau seret gambar makanan</span>
-                <span class="sub">JPG, JPEG, PNG — satu gambar per-analisis</span>
-                <input type="file" name="images[]" id="file-input" accept="image/; capture=camera*">
-            </label>
+<label class="upload-zone" id="drop-zone">
+<span class="icon">📂</span>
+<span class="text-wrap">
+<span class="label">Pilih atau seret gambar makanan</span>
+<span class="sub">JPG, JPEG, PNG</span>
+</span>
+<input type="file" name="images[]" id="file-input" accept="image/*; capture=camera">
+</label>
             <div id="preview-strip"></div>
             <div class="edit-row" style="margin-top:.8rem">
                 <div class="edit-label">Deskripsi tambahan:</div>
