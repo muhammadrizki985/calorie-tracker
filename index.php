@@ -939,39 +939,46 @@ function toggleMeal(id) {
     body.classList.toggle('open');
 }
 
+// ── save ingredient weight changes ────────────────────────────
+async function saveIngredientWeights(id) {
+    const card = document.getElementById('meal-' + id);
+    const inputs = card.querySelectorAll('.ing-weight-input');
+    const changes = [];
+    inputs.forEach(inp => {
+        const newVal = inp.value.trim();
+        const origVal = inp.dataset.orig;
+        if (newVal !== '' && newVal !== origVal) {
+            changes.push({ idx: inp.dataset.idx, berat: parseInt(newVal, 10) });
+        }
+    });
+
+    if (changes.length > 0) {
+        const fd = new FormData();
+        fd.append('action', 'update_ingredient_weights');
+        fd.append('meal_id', id);
+        fd.append('changes', JSON.stringify(changes));
+        try {
+            const res = await fetch('actions.php', { method: 'POST', body: fd });
+            const data = await res.json();
+            if (!data.ok) {
+                showToast('Gagal: ' + (data.error || 'Unknown error'));
+            } else {
+                location.reload();
+                return true;
+            }
+        } catch (err) { showToast('Terjadi kesalahan jaringan.'); }
+    }
+    return false;
+}
+
 // ── toggle ingredient edit mode ───────────────────────────────
 async function toggleEditIngredients(id) {
     const card = document.getElementById('meal-' + id);
     const wasEditing = card.classList.contains('editing');
 
     if (wasEditing) {
-        // Save all changed weights before exiting edit mode
-        const inputs = card.querySelectorAll('.ing-weight-input');
-        const changes = [];
-        inputs.forEach(inp => {
-            const newVal = inp.value.trim();
-            const origVal = inp.dataset.orig;
-            if (newVal !== '' && newVal !== origVal) {
-                changes.push({ idx: inp.dataset.idx, berat: parseInt(newVal, 10) });
-            }
-        });
-
-        if (changes.length > 0) {
-            const fd = new FormData();
-            fd.append('action', 'update_ingredient_weights');
-            fd.append('meal_id', id);
-            fd.append('changes', JSON.stringify(changes));
-            try {
-                const res = await fetch('actions.php', { method: 'POST', body: fd });
-                const data = await res.json();
-                if (!data.ok) {
-                    showToast('Gagal: ' + (data.error || 'Unknown error'));
-                } else {
-                    location.reload();
-                    return;
-                }
-            } catch (err) { showToast('Terjadi kesalahan jaringan.'); }
-        }
+        const saved = await saveIngredientWeights(id);
+        if (saved) return;
     }
 
     card.classList.toggle('editing');
@@ -980,6 +987,23 @@ async function toggleEditIngredients(id) {
     btn.textContent = isEditing ? '✅' : '✏️';
     btn.title = isEditing ? 'Simpan' : 'Edit';
 }
+
+// ── Enter key on weight input triggers save ───────────────────
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.target.classList.contains('ing-weight-input')) {
+        e.preventDefault();
+        const card = e.target.closest('.meal-card');
+        const id = card.id.replace('meal-', '');
+        saveIngredientWeights(id).then(saved => {
+            if (!saved) {
+                card.classList.remove('editing');
+                const btn = card.querySelector('.ing-edit-btn');
+                btn.textContent = '✏️';
+                btn.title = 'Edit';
+            }
+        });
+    }
+});
 
 // ── recalculate ───────────────────────────────────────────────
 async function removeIngredient(mealId, ingIndex) {
