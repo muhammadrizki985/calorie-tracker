@@ -368,6 +368,88 @@ switch ($action) {
         ok(['new_calories' => $newCal, 'new_protein' => $newProt, 'new_carbs' => $newCarb, 'new_fat' => $newFat]);
     }
 
+    // ── update ingredient weights ─────────────────────────────────────────────
+    case 'update_ingredient_weights': {
+        $mealId = (int)($_POST['meal_id'] ?? 0);
+        $changesRaw = $_POST['changes'] ?? '[]';
+        if (!$mealId) fail('Missing meal_id.');
+
+        $changes = json_decode($changesRaw, true);
+        if (!is_array($changes)) fail('Invalid changes format.');
+
+        $db = getDb();
+        $stmt = $db->prepare("SELECT ingredients, calories, protein, carbs, fat FROM meals WHERE id=:id");
+        $stmt->bindValue(':id', $mealId);
+        $result = $stmt->execute();
+        $row = $result->fetchArray(SQLITE3_ASSOC);
+        if (!$row) fail('Meal not found.');
+
+        $oldCal  = (int)$row['calories'];
+        $oldProt = (int)$row['protein'];
+        $oldCarb = (int)$row['carbs'];
+        $oldFat  = (int)$row['fat'];
+
+        $ingredients = json_decode($row['ingredients'], true) ?: [];
+
+        // Build lookup of old calorie per ingredient index
+        $oldCalLookup = [];
+        foreach ($ingredients as $idx => $item) {
+            if (is_array($item) && isset($item['kalori'])) {
+                $oldCalLookup[$idx] = (int)$item['kalori'];
+            }
+        }
+
+        // Apply weight changes
+        foreach ($changes as $ch) {
+            $idx = (int)($ch['idx'] ?? -1);
+            $newWeight = (int)($ch['berat'] ?? 0);
+            if ($idx < 0 || $idx >= count($ingredients)) continue;
+            if (!is_array($ingredients[$idx])) continue;
+
+            $oldWeight = (int)($ingredients[$idx]['berat_g'] ?? 0);
+            if ($oldWeight <= 0) continue;
+
+            $ratio = $newWeight / $oldWeight;
+            $ingredients[$idx]['berat_g'] = $newWeight;
+
+            // Scale calories proportionally
+            if (isset($ingredients[$idx]['kalori'])) {
+                $ingredients[$idx]['kalori'] = (int)round((int)$ingredients[$idx]['kalori'] * $ratio);
+            }
+        }
+
+        // Recalculate total calories from ingredients
+        $newCal = 0;
+        foreach ($ingredients as $item) {
+            if (is_array($item) && isset($item['kalori'])) {
+                $newCal += (int)$item['kalori'];
+            }
+        }
+
+        // Scale macros proportionally
+        if ($oldCal > 0) {
+            $ratio = $newCal / $oldCal;
+            $newProt = max(0, (int)round($oldProt * $ratio));
+            $newCarb = max(0, (int)round($oldCarb * $ratio));
+            $newFat  = max(0, (int)round($oldFat  * $ratio));
+        } else {
+            $newProt = $oldProt;
+            $newCarb = $oldCarb;
+            $newFat  = $oldFat;
+        }
+
+        $stmt = $db->prepare("UPDATE meals SET ingredients=:ing, calories=:cal, protein=:pro, carbs=:carb, fat=:fat WHERE id=:id");
+        $stmt->bindValue(':ing', json_encode($ingredients));
+        $stmt->bindValue(':cal', $newCal);
+        $stmt->bindValue(':pro', $newProt);
+        $stmt->bindValue(':carb', $newCarb);
+        $stmt->bindValue(':fat', $newFat);
+        $stmt->bindValue(':id', $mealId);
+        $stmt->execute();
+
+        ok(['new_calories' => $newCal]);
+    }
+
     // ── clear all meals ───────────────────────────────────────────────────────
     case 'clear': {
         $db = getDb();

@@ -380,23 +380,41 @@ input, textarea {
     border-collapse: collapse;
     margin-bottom: .8rem;
     font-size: .78rem;
+    table-layout: fixed;
 }
+.ingredient-table col.col-bahan  { width: 45%; }
+.ingredient-table col.col-berat  { width: auto; }
+.ingredient-table col.col-kalori { width: auto; }
+.ingredient-table col.col-action { width: 28px; }
 .ingredient-table th {
     text-align: left;
     color: var(--olive);
     font-weight: 700;
     padding: .25rem .4rem;
     border-bottom: 1px solid var(--border);
+    vertical-align: bottom;
+    line-height: 1.2;
+}
+.ingredient-table th:last-child {
+    vertical-align: middle;
+    text-align: center;
+}
+.ingredient-table td:last-child {
+    text-align: center;
+}
+.ingredient-table th .unit {
+    display: block;
+    font-weight: 400;
+    font-size: .7rem;
+    color: var(--muted);
 }
 .ingredient-table td {
     color: var(--muted);
     padding: .25rem .4rem;
+    vertical-align: middle;
 }
 .ingredient-table td:last-child {
-    text-align: right;
-}
-.ingredient-table th:last-child {
-    text-align: right;
+    text-align: center;
 }
 .ingredient-table tr + tr {
     border-top: 1px dotted var(--border);
@@ -410,8 +428,47 @@ input, textarea {
     padding: 0;
     line-height: 1;
     transition: color .15s;
+    display: none;
 }
+.meal-card.editing .ing-del { display: inline-block; }
 .ing-del:hover { color: var(--red); }
+
+.ing-edit-btn {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-size: .78rem;
+    cursor: pointer;
+    padding: .2rem .35rem;
+    border-radius: var(--radius-sm);
+    transition: background .15s, color .15s;
+}
+.ing-edit-btn:hover { background: var(--parchment); color: var(--olive); }
+.meal-card.editing .ing-edit-btn { background: var(--terra-pale); color: var(--terracotta); }
+
+.ing-weight-input {
+    width: 100%;
+    max-width: 50px;
+    box-sizing: border-box;
+    padding: 0 .2rem;
+    border: none;
+    border-bottom: 1.5px solid var(--border);
+    border-radius: 0;
+    font-family: 'Nunito', sans-serif;
+    font-size: .78rem;
+    line-height: 1;
+    height: 1.2em;
+    background: transparent;
+    color: var(--ink);
+    display: none;
+    text-align: left;
+    -moz-appearance: textfield;
+}
+.ing-weight-input::-webkit-outer-spin-button,
+.ing-weight-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.ing-weight-input:focus { outline: none; border-color: var(--terracotta); }
+.meal-card.editing .ing-weight-input { display: block; }
+.meal-card.editing .ing-weight-static { display: none; }
 
 .edit-row { display: block; margin-bottom: .7rem; }
 .edit-label { font-size: .84rem; color: var(--muted); margin-bottom: .3rem; display: block; font-weight: 700; }
@@ -633,7 +690,18 @@ hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
 
                                 <?php if ($ing): ?>
                                 <table class="ingredient-table">
-                                    <tr><th>Bahan</th><th>Berat (g)</th><th>Kalori (kkal)</th><th></th></tr>
+                                    <colgroup>
+                                        <col class="col-bahan">
+                                        <col class="col-berat">
+                                        <col class="col-kalori">
+                                        <col class="col-action">
+                                    </colgroup>
+                                    <tr>
+                                        <th>Bahan<span class="unit">(nama)</span></th>
+                                        <th>Berat<span class="unit">(g)</span></th>
+                                        <th>Kalori<span class="unit">(kkal)</span></th>
+                                        <th><button class="ing-edit-btn" onclick="toggleEditIngredients(<?= $meal['id'] ?>)" title="Edit">✏️</button></th>
+                                    </tr>
                                     <?php
                                     // Support both old string format and new object format
                                     $items = [];
@@ -662,7 +730,10 @@ hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
                                     foreach ($items as $row): ?>
                                     <tr>
                                         <td><?= $row['nama'] ?></td>
-                                        <td><?= $row['berat'] ?></td>
+                                        <td>
+                                            <span class="ing-weight-static"><?= $row['berat'] ?></span>
+                                            <input class="ing-weight-input" type="number" data-meal="<?= $meal['id'] ?>" data-idx="<?= $row['origIdx'] ?>" data-orig="<?= is_numeric($row['berat']) ? $row['berat'] : '' ?>" value="<?= is_numeric($row['berat']) ? $row['berat'] : '' ?>">
+                                        </td>
                                         <td><?= $row['kalori'] ?></td>
                                         <td style="text-align:center;padding-right:4px">
                                             <button class="ing-del" onclick="removeIngredient(<?= $meal['id'] ?>, <?= $row['origIdx'] ?>)">✕</button>
@@ -866,6 +937,48 @@ function toggleMeal(id) {
     const body = document.getElementById('body-' + id);
     hdr.classList.toggle('open');
     body.classList.toggle('open');
+}
+
+// ── toggle ingredient edit mode ───────────────────────────────
+async function toggleEditIngredients(id) {
+    const card = document.getElementById('meal-' + id);
+    const wasEditing = card.classList.contains('editing');
+
+    if (wasEditing) {
+        // Save all changed weights before exiting edit mode
+        const inputs = card.querySelectorAll('.ing-weight-input');
+        const changes = [];
+        inputs.forEach(inp => {
+            const newVal = inp.value.trim();
+            const origVal = inp.dataset.orig;
+            if (newVal !== '' && newVal !== origVal) {
+                changes.push({ idx: inp.dataset.idx, berat: parseInt(newVal, 10) });
+            }
+        });
+
+        if (changes.length > 0) {
+            const fd = new FormData();
+            fd.append('action', 'update_ingredient_weights');
+            fd.append('meal_id', id);
+            fd.append('changes', JSON.stringify(changes));
+            try {
+                const res = await fetch('actions.php', { method: 'POST', body: fd });
+                const data = await res.json();
+                if (!data.ok) {
+                    showToast('Gagal: ' + (data.error || 'Unknown error'));
+                } else {
+                    location.reload();
+                    return;
+                }
+            } catch (err) { showToast('Terjadi kesalahan jaringan.'); }
+        }
+    }
+
+    card.classList.toggle('editing');
+    const btn = card.querySelector('.ing-edit-btn');
+    const isEditing = card.classList.contains('editing');
+    btn.textContent = isEditing ? '✅' : '✏️';
+    btn.title = isEditing ? 'Simpan' : 'Edit';
 }
 
 // ── recalculate ───────────────────────────────────────────────
